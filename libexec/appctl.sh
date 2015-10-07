@@ -73,7 +73,25 @@ echo "appinstance home is [$APPINSTANCE_HOME]."
 export COOKIE_MODE=ignore 			# do not set -cookie; let erlang use $HOME/.erlang.cookie
 underscored_app_version="${app_version//./_}" 	# erlang does not like dots in node_name 
 export NODE_NAME="$app_name-$underscored_app_version-$instance_name@127.0.0.1"
-export RELEASE_CONFIG_FILE="/etc/${app_instance}.conf"
+
+# set the RELEASE_CONFIG_FILE variable for exrm
+if [ -n "$BASE_RELEASE_CONFIG_FILE" -a -e "$BASE_RELEASE_CONFIG_FILE" ]
+then
+    BASE_RELEASE_CONFIG_FILE_DIR=$(dirname "${BASE_RELEASE_CONFIG_FILE}")
+    if [ ! -e "${BASE_RELEASE_CONFIG_FILE_DIR}/${app_instance}.conf" ]
+    then
+        cp "${BASE_RELEASE_CONFIG_FILE}" "${BASE_RELEASE_CONFIG_FILE_DIR}/${app_instance}.conf"
+    fi
+    export RELEASE_CONFIG_FILE="${BASE_RELEASE_CONFIG_FILE_DIR}/${app_instance}.conf"
+elif [ -e "/etc/${app_instance}.conf" ]
+then
+    # by default we expect a config from /etc
+    export RELEASE_CONFIG_FILE="/etc/${app_instance}.conf"
+else
+    echo "no valid config file found for appinstance [${app_instance}]"
+    exit 1
+fi
+echo "using config file [$RELEASE_CONFIG_FILE]."
 
 case $command in
 	start)
