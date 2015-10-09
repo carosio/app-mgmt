@@ -78,20 +78,18 @@ export NODE_NAME="$app_name-$underscored_app_version-$instance_name@127.0.0.1"
 if [ -n "$BASE_RELEASE_CONFIG_FILE" -a -e "$BASE_RELEASE_CONFIG_FILE" ]
 then
     BASE_RELEASE_CONFIG_FILE_DIR=$(dirname "${BASE_RELEASE_CONFIG_FILE}")
-    if [ ! -e "${BASE_RELEASE_CONFIG_FILE_DIR}/${app_instance}.conf" ]
+    if [ -e "${BASE_RELEASE_CONFIG_FILE_DIR}/${app_instance}.conf" ]
     then
-        cp "${BASE_RELEASE_CONFIG_FILE}" "${BASE_RELEASE_CONFIG_FILE_DIR}/${app_instance}.conf"
+        export RELEASE_CONFIG_FILE="${BASE_RELEASE_CONFIG_FILE_DIR}/${app_instance}.conf"
+        echo "using config [${BASE_RELEASE_CONFIG_FILE_DIR}/${app_instance}.conf]"
+    else
+        export RELEASE_CONFIG_FILE="$BASE_RELEASE_CONFIG_FILE"
+        echo "using config [${BASE_RELEASE_CONFIG_FILE}]"
     fi
-    export RELEASE_CONFIG_FILE="${BASE_RELEASE_CONFIG_FILE_DIR}/${app_instance}.conf"
-elif [ -e "/etc/${app_instance}.conf" ]
-then
-    # by default we expect a config from /etc
-    export RELEASE_CONFIG_FILE="/etc/${app_instance}.conf"
 else
     echo "no valid config file found for appinstance [${app_instance}]"
     exit 1
 fi
-echo "using config file [$RELEASE_CONFIG_FILE]."
 
 case $command in
 	start)
