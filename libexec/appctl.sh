@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/zsh
 #
 # $0 start app_source
 # $0 stop|ping|remote_console appinstance
@@ -48,11 +48,16 @@ fi
 # (systemd-case)
 
 # APPNAME@VERSION,INSTANCE
-# unimux@1.2.3,inst1
+# unimux@1.2.3:inst1
 app_name="${app_instance%%@*}" # APPNAME
 unit_name_suffix="${app_instance##*@}" # VERSION,INSTANCE
 app_version="${unit_name_suffix%%:*}" # VERSION
 instance_name="${unit_name_suffix##*:}" # INSTANCE
+if [ "$instance_name" = "$unit_name_suffix" ]
+then
+	instance_name=default
+	app_instance="${app_instance}-${instance_name}"
+fi
 
 if [ "$command" = start ]
 then
@@ -64,37 +69,45 @@ fi
 
 export APPINSTANCE_HOME="/run/$app_instance"
 export RELEASE_MUTABLE_DIR="$APPINSTANCE_HOME"
-export HOME="$APPINSTANCE_HOME" # for automatic cookie generation by erlag vm
+export HOME="$APPINSTANCE_HOME" # for automatic cookie generation by erlang vm
 echo "appinstance home is [$APPINSTANCE_HOME]."
 
-[ "$command" != start ] && app_source=$(cat "${APPINSTANCE_HOME}/APPSOURCE")
+[ "$command" != start ] && [ -s "${APPINSTANCE_HOME}/APPSOURCE" ] && app_source=$(cat "${APPINSTANCE_HOME}/APPSOURCE")
 
 # some defaults
 export COOKIE_MODE=ignore 			# do not set -cookie; let erlang use $HOME/.erlang.cookie
 underscored_app_version="${app_version//./_}" 	# erlang does not like dots in node_name 
 export NODE_NAME="$app_name-$underscored_app_version-$instance_name@127.0.0.1"
 
-# set the RELEASE_CONFIG_FILE variable for exrm
-if [ -n "$BASE_RELEASE_CONFIG_FILE" -a -e "$BASE_RELEASE_CONFIG_FILE" ]
+# evaluate CONFPATH
+# for now CONFPATH is just a file which holds the path
+# to the conf-file to be used.
+# later it can be a list of files, contain directories,
+# names of environment variables and other configuration locations.
+# this mechanism allows app-management without explicit knowledge
+# about the location of configuration data. the decision about
+# the configuration source is made during app-packaging/distribution.
+if [ -s "${app_source}/${app_version}/CONFPATH" ]
 then
-    BASE_RELEASE_CONFIG_FILE_DIR=$(dirname "${BASE_RELEASE_CONFIG_FILE}")
-    if [ ! -e "${BASE_RELEASE_CONFIG_FILE_DIR}/${app_instance}.conf" ]
-    then
-        cp "${BASE_RELEASE_CONFIG_FILE}" "${BASE_RELEASE_CONFIG_FILE_DIR}/${app_instance}.conf"
-    fi
-    export RELEASE_CONFIG_FILE="${BASE_RELEASE_CONFIG_FILE_DIR}/${app_instance}.conf"
-elif [ -e "/etc/${app_instance}.conf" ]
-then
-    # by default we expect a config from /etc
-    export RELEASE_CONFIG_FILE="/etc/${app_instance}.conf"
+	# read the first non-comment line
+	CONFPATH=$( grep -v '^#' "${app_source}/${app_version}/CONFPATH" | head -n 1 )
+	if [ -r "$CONFPATH" ] ; then
+		export RELEASE_CONFIG_FILE="$CONFPATH"
+		echo "using config file [$RELEASE_CONFIG_FILE]."
+	else
+		echo "CONFPATH [$CONFPATH] not readable."
+		exit 1
+	fi
 else
-    echo "no valid config file found for appinstance [${app_instance}]"
-    exit 1
+	echo "no ${app_source}/${app_version}/CONFPATH present"
 fi
-echo "using config file [$RELEASE_CONFIG_FILE]."
 
 case $command in
 	start)
+		if [ -z "$RELEASE_CONFIG_FILE" ] ; then
+			echo "failed to determine RELEASE_CONFIG_FILE."
+			exit 1
+		fi
 		echo "starting [$app_instance] from [$app_source/$app_version]"
 		mkdir -pv "$APPINSTANCE_HOME"
 		cd "$APPINSTANCE_HOME"
