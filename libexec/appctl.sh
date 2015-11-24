@@ -135,4 +135,12 @@ case $command in
 
 		exec "${app_source}/${app_version}/bin/rc" $command
 	;;
+	reload)
+		if [ ! -d "$APPINSTANCE_HOME" ] ; then
+			echo "appinstance [$APPINSTANCE_HOME] not found or invalid."
+			exit 1
+		fi
+
+		exec "${app_source}/${app_version}/bin/rc" rpc Elixir.ReleaseManager.Reload run
+	;;
 esac
