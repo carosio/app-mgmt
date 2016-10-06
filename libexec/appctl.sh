@@ -75,6 +75,7 @@ echo "appinstance home is [$APPINSTANCE_HOME]."
 [ "$command" != start ] && [ -s "${APPINSTANCE_HOME}/APPSOURCE" ] && app_source=$(cat "${APPINSTANCE_HOME}/APPSOURCE")
 
 # some defaults
+export ERL_EPMD_ADDRESS=127.0.0.1   # currently we don't use distributed erlang and don't need the epmd
 export COOKIE_MODE=ignore 			# do not set -cookie; let erlang use $HOME/.erlang.cookie
 underscored_app_version="${app_version//./_}" 	# erlang does not like dots in node_name 
 export NODE_NAME="$app_name-$underscored_app_version-$instance_name@127.0.0.1"
