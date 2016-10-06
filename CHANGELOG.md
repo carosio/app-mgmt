@@ -1,3 +1,9 @@
+# 0.5.3
+
+Bugfixes:
+
+* Configure EPMD to listen only on localhost
+
 # 0.5.2
 
 Bugfixes:
