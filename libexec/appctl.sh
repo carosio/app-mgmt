@@ -76,9 +76,6 @@ echo "appinstance home is [$APPINSTANCE_HOME]."
 
 # some defaults
 export ERL_EPMD_ADDRESS=127.0.0.1   # currently we don't use distributed erlang and don't need the epmd
-export COOKIE_MODE=ignore 			# do not set -cookie; let erlang use $HOME/.erlang.cookie
-underscored_app_version="${app_version//./_}" 	# erlang does not like dots in node_name 
-export NODE_NAME="$app_name-$underscored_app_version-$instance_name@127.0.0.1"
 
 # evaluate CONFPATH
 # for now CONFPATH is just a file which holds the path
@@ -115,16 +112,6 @@ case $command in
 		echo "$app_source" > APPSOURCE
 		echo $$ > MAINPID
 		env > ENV
-		if [ -e /etc/erlang-cluster-cookie ] ; then
-			cp -v /etc/erlang-cluster-cookie "$APPINSTANCE_HOME/.erlang.cookie"
-			chmod 400 "$APPINSTANCE_HOME/.erlang.cookie"
-		else
-			echo "WARNING: no /etc/erlang-cluster-cookie set. erlang will generate a cookie."
-			echo "WARNING: for a cluster-wide shared cookie you can distribute"
-		       	echo "WARNING: $APPINSTANCE_HOME/.erlang.cookie from this node to"
-		       	echo "WARNING: /etc/erlang-cluster-cookie on all cluster hosts."
-			rm -f "$APPINSTANCE_HOME/.erlang.cookie"
-		fi
 
 		exec "${app_source}/${app_version}/bin/rc" foreground
 	;;
