@@ -3,7 +3,7 @@
 # $0 start app_source
 # $0 stop|ping|remote_console appinstance
 #
-# at the moment only one kind of application is supported: exrm based elixir-release.
+# at the moment only one kind of application is supported: distillery based elixir-release.
 #
 # also: at the moment the only use-case is being called by a systemd-unit.
 #
@@ -68,14 +68,13 @@ then
 fi
 
 export APPINSTANCE_HOME="/run/$app_instance"
-export RELEASE_MUTABLE_DIR="$APPINSTANCE_HOME"
+export RELEASE_CONFIG_DIR="$APPINSTANCE_HOME"
+export RELEASE_MUTABLE_DIR="$APPINSTANCE_HOME/mutable/${command}"
 export HOME="$APPINSTANCE_HOME" # for automatic cookie generation by erlang vm
+export ERL_EPMD_ADDRESS=127.0.0.1   # currently we don't use distributed erlang and don't need the epmd
 echo "appinstance home is [$APPINSTANCE_HOME]."
 
 [ "$command" != start ] && [ -s "${APPINSTANCE_HOME}/APPSOURCE" ] && app_source=$(cat "${APPINSTANCE_HOME}/APPSOURCE")
-
-# some defaults
-export ERL_EPMD_ADDRESS=127.0.0.1   # currently we don't use distributed erlang and don't need the epmd
 
 # evaluate CONFPATH
 # for now CONFPATH is just a file which holds the path
@@ -90,8 +89,7 @@ then
 	# read the first non-comment line
 	CONFPATH=$( grep -v '^#' "${app_source}/${app_version}/CONFPATH" | head -n 1 )
 	if [ -r "$CONFPATH" ] ; then
-		export RELEASE_CONFIG_FILE="$CONFPATH"
-		echo "using config file [$RELEASE_CONFIG_FILE]."
+                echo "using config file [$CONFPATH]."
 	else
 		echo "CONFPATH [$CONFPATH] not readable."
 		exit 1
@@ -102,16 +100,35 @@ fi
 
 case $command in
 	start)
-		if [ -z "$RELEASE_CONFIG_FILE" ] ; then
-			echo "failed to determine RELEASE_CONFIG_FILE."
+                if [ -z "$CONFPATH" ] ; then
+                        echo "failed to determine CONFPATH."
 			exit 1
 		fi
 		echo "starting [$app_instance] from [$app_source/$app_version]"
 		mkdir -pv "$APPINSTANCE_HOME"
+                basename=$(basename $CONFPATH)
+
+                # The config is read from $APPINSTANCE_HOME
+                # and it may occur that the config name has
+                # hyphens instead of underscores. The latter
+                # is used for our app names and considered by
+                # distillery for config files.
+                cp $CONFPATH "$APPINSTANCE_HOME/${basename/-/_}"
+
 		cd "$APPINSTANCE_HOME"
 		echo "$app_source" > APPSOURCE
 		echo $$ > MAINPID
 		env > ENV
+                if [ -e /etc/erlang-cluster-cookie ] ; then
+                        cp -v /etc/erlang-cluster-cookie "$APPINSTANCE_HOME/.erlang.cookie"
+                        chmod 400 "$APPINSTANCE_HOME/.erlang.cookie"
+                else
+                        echo "WARNING: no /etc/erlang-cluster-cookie set. erlang will generate a cookie."
+                        echo "WARNING: for a cluster-wide shared cookie you can distribute"
+                        echo "WARNING: $APPINSTANCE_HOME/.erlang.cookie from this node to"
+                        echo "WARNING: /etc/erlang-cluster-cookie on all cluster hosts."
+                        rm -f "$APPINSTANCE_HOME/.erlang.cookie"
+                fi
 
 		exec "${app_source}/${app_version}/bin/rc" foreground
 	;;
@@ -132,3 +149,4 @@ case $command in
 		exec "${app_source}/${app_version}/bin/rc" rpc Elixir.ReleaseManager.Reload run
 	;;
 esac
+
