@@ -90,8 +90,9 @@ then
 	# read the first non-comment line
 	CONFPATH=$( grep -v '^#' "${app_source}/${app_version}/CONFPATH" | head -n 1 )
 	if [ -r "$CONFPATH" ] ; then
-		export RELEASE_CONFIG_FILE="$CONFPATH"
-		echo "using config file [$RELEASE_CONFIG_FILE]."
+		export RELEASE_CONFIG_FILE="$CONFPATH" #backward compatibility with exrm
+		export CONFORM_CONF_PATH="$CONFPATH"
+		echo "using config file [$CONFORM_CONF_PATH]."
 	else
 		echo "CONFPATH [$CONFPATH] not readable."
 		exit 1
@@ -102,8 +103,8 @@ fi
 
 case $command in
 	start)
-		if [ -z "$RELEASE_CONFIG_FILE" ] ; then
-			echo "failed to determine RELEASE_CONFIG_FILE."
+		if [ -z "$CONFORM_CONF_PATH" ] ; then
+			echo "failed to determine CONFORM_CONF_PATH."
 			exit 1
 		fi
 		echo "starting [$app_instance] from [$app_source/$app_version]"
