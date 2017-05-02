@@ -1,3 +1,11 @@
+# 0.5.4
+
+Enhancements:
+
+ * add support for conform and distillery: use CONFORM_CONF_PATH env to 
+   configure config path
+
+
 # 0.5.3
 
 Bugfixes:
